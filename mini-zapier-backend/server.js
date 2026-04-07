@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(cors());
 
 // Serve the frontend UI
-const frontendPath = path.join(__dirname, '../frontend');
+const frontendPath = path.join(__dirname, '../mini-zapier-frontend');
 app.use(express.static(frontendPath));
 
 app.get('/', (req, res) => {
