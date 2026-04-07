@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Mini-Zapier Dashboard</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #6366f1;
+            --discord: #7289da;
+            --telegram: #0088cc;
+            --success: #10b981;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+        }
+
+        body {
+            background: var(--bg-gradient);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+            color: #1a202c;
+        }
+
+        .dashboard {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        header { text-align: center; margin-bottom: 2rem; }
+        h2 { font-size: 2.2rem; font-weight: 800; margin: 0; letter-spacing: -1px; color: #1a202c; }
+        .subtitle { color: #718096; font-size: 0.9rem; margin-top: 5px; }
+
+        .section-title { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #a0aec0; margin-bottom: 1rem; display: block; }
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; }
+
+        select, input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #edf2f7;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            outline: none;
+            font-family: 'Inter', 'Font Awesome 6 Brands', 'Font Awesome 6 Free', sans-serif;
+            font-weight: 600;
+        }
+
+        select:focus, input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+
+        .rule-card {
+            position: relative;
+            background: #ffffff;
+            border: 1px solid #f7fafc;
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .rule-card:hover { transform: scale(1.02); }
+
+        .delete-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            background: #fee2e2 !important;
+            color: #ef4444 !important;
+            border: 1px solid #fecaca !important;
+            border-radius: 8px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 0 !important;
+            opacity: 0.6;
+        }
+        .delete-btn:hover {
+            background: #ef4444 !important;
+            color: white !important;
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .badge-discord { background: #5865F2; color: white; }
+        .badge-telegram { background: #0088cc; color: white; }
+        .badge-db { background: #10b981; color: white; }
+
+        button.main-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        button.main-btn:hover { background: #4f46e5; transform: translateY(-2px); }
+
+        #status { margin-top: 1rem; text-align: center; font-size: 14px; font-weight: 600; min-height: 20px; }
+        .success-text { color: var(--success); }
+        .error-text { color: #ef4444; }
+
+        .rule-info { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+        .rule-payload { margin-top: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; font-size: 0.85rem; color: #64748b; border-left: 3px solid #cbd5e1; }
+        
+        #rulesList::-webkit-scrollbar { width: 6px; }
+        #rulesList::-webkit-scrollbar-thumb { background: #f0eee2; border-radius: 10px; }
+        
+        .hidden { display: none !important; }
+
+        #schedule_options {
+            animation: slideDown 0.3s ease-out forwards;
+            border-left: 3px solid var(--primary);
+            padding-left: 15px;
+            margin-left: 5px;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <header>
+        <h2>Mini-Zapier</h2>
+        <p class="subtitle">Electronics & Telecomm Automation Engine</p>
+    </header>
+    
+    <span class="section-title">Configuration</span>
+    
+    <div class="form-group">
+        <label>Trigger Source</label>
+        <select id="trigger_source" onchange="toggleScheduleOptions()">
+            <option value="Webhook">🌐 Incoming Webhook</option>
+            <option value="Schedule">&#x23F2; Schedule Task</option>
+            <option value="Sensor">🔌 ESP32 Sensor Hit</option>
+        </select>
+    </div>
+
+    <div id="schedule_options" class="form-group hidden">
+        <label style="color: var(--primary); font-size: 0.8rem;">Select Frequency</label>
+        <select id="schedule_type" onchange="toggleTimeInput()">
+            <option value="* * * * *">Every Minute</option>
+            <option value="0 * * * *">Every Hour</option>
+            <option value="custom">Set Specific Time Daily</option>
+        </select>
+
+        <div id="custom_time_div" class="hidden" style="margin-top: 10px;">
+            <input type="time" id="custom_time">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Action Target</label>
+        <select id="action_target">
+            <option value="Discord">&#xf392; Send Discord Message</option>
+            <option value="Telegram">&#xf2c6; Send Telegram Message</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Data Payload</label>
+        <input type="text" id="action_payload" placeholder="e.g. System Alert: Motion Detected">
+    </div>
+
+    <button class="main-btn" onclick="saveRule()">
+        <i class="fas fa-plus-circle"></i> Create Automation
+    </button>
+    
+    <div id="status"></div>
+
+    <div class="rules-container" style="margin-top: 20px;">
+        <span class="section-title">Active Workflows</span>
+        <div id="rulesList">
+            <p style="text-align:center; color:#a0aec0; font-size: 0.9rem;">Fetching rules...</p>
+        </div>
+    </div>
+
+    <div class="rules-container" style="margin-top: 20px;">
+        <span class="section-title">Execution History</span>
+        <div id="logsList" style="background: #f8fafc; border-radius: 12px; padding: 15px; max-height: 200px; overflow-y: auto;">
+            <p style="text-align:center; color:#a0aec0; font-size: 0.9rem;">Waiting for activity...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- SECURITY CONFIGURATION ---
+    const API_BASE = '';
+    const SYSTEM_API_KEY = 'extc-zapier-secret'; // This MUST match your .env file!
+
+    // Helper function to attach the VIP Pass to every request
+    const secureHeaders = {
+        'Content-Type': 'application/json',
+        'x-api-key': SYSTEM_API_KEY
+    };
+
+    function toggleScheduleOptions() {
+        const trigger = document.getElementById('trigger_source').value;
+        const schedOptions = document.getElementById('schedule_options');
+        if (trigger === 'Schedule') schedOptions.classList.remove('hidden');
+        else schedOptions.classList.add('hidden');
+    }
+
+    function toggleTimeInput() {
+        const type = document.getElementById('schedule_type').value;
+        const timeDiv = document.getElementById('custom_time_div');
+        if (type === 'custom') timeDiv.classList.remove('hidden');
+        else timeDiv.classList.add('hidden');
+    }
+
+    function getBadge(target) {
+        if (target === "Discord") return `<span class="badge badge-discord"><i class="fab fa-discord"></i> Discord</span>`;
+        if (target === "Telegram") return `<span class="badge badge-telegram"><i class="fa-brands fa-telegram"></i> Telegram</span>`;
+        return `<span class="badge badge-db">${target}</span>`;
+    }
+
+    async function loadRules() {
+        const listDiv = document.getElementById('rulesList');
+        try {
+            // SECURED FETCH
+            const response = await fetch(`${API_BASE}/get-rules`, { headers: secureHeaders });
+            
+            if(response.status === 401) throw new Error("Unauthorized");
+            
+            const rules = await response.json();
+            
+            if (rules.length === 0) {
+                listDiv.innerHTML = '<p style="text-align:center; color:#999; font-size:0.8rem;">No workflows configured.</p>';
+                return;
+            }
+
+            listDiv.innerHTML = rules.map(r => {
+                const triggerText = r.trigger_source === "Schedule" 
+                    ? `<span>⏰</span> When <strong>Schedule (${r.cron_schedule || "* * * * *"})</strong> hits...` 
+                    : `<span>⚡</span> When <strong>${r.trigger_source}</strong> fires...`;
+
+                return `
+                <div class="rule-card">
+                    <button class="delete-btn" onclick="deleteRule('${r._id}')" title="Delete Rule">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    ${getBadge(r.action_target)}
+                    <div class="rule-info">${triggerText}</div>
+                    <div class="rule-payload">"${r.action_payload}"</div>
+                </div>
+                `;
+            }).join('');
+        } catch (err) {
+            listDiv.innerHTML = '<p class="error-text">❌ Connection Lost or Unauthorized.</p>';
+        }
+    }
+
+    async function loadLogs() {
+        const logDiv = document.getElementById('logsList');
+        try {
+            // SECURED FETCH
+            const response = await fetch(`${API_BASE}/get-logs`, { headers: secureHeaders });
+            const logs = await response.json();
+            
+            if (logs.length === 0) {
+                logDiv.innerHTML = '<p style="text-align:center; color:#999; font-size:0.8rem;">No recent activity.</p>';
+                return;
+            }
+
+            logDiv.innerHTML = logs.map(log => {
+                const timeString = new Date(log.timestamp).toLocaleTimeString();
+                const icon = log.target === "Discord" ? '<i class="fab fa-discord" style="color:#5865F2;"></i>' : '<i class="fa-brands fa-telegram" style="color:#0088cc;"></i>';
+                
+                return `
+                <div style="border-bottom: 1px solid #e2e8f0; padding: 8px 0; font-size: 0.85rem; display: flex; align-items: center; gap: 10px;">
+                    <span style="color: #64748b; font-weight: 600;">[${timeString}]</span>
+                    ${icon}
+                    <span style="color: #1a202c;">Sent: "${log.payload}"</span>
+                </div>
+                `;
+            }).join('');
+        } catch (err) {
+            console.error("Could not fetch logs");
+        }
+    }
+
+    async function deleteRule(id) {
+        if (!confirm("Are you sure you want to delete this automation?")) return;
+        try {
+            // SECURED FETCH
+            const response = await fetch(`${API_BASE}/delete-rule/${id}`, { 
+                method: 'DELETE',
+                headers: secureHeaders 
+            });
+            if (response.ok) { loadRules(); }
+        } catch (err) { alert("Could not delete rule."); }
+    }
+
+    async function saveRule() {
+        const statusDiv = document.getElementById('status');
+        const payloadInput = document.getElementById('action_payload');
+        
+        let cron_string = "* * * * *"; 
+        if (document.getElementById('trigger_source').value === 'Schedule') {
+            const schedType = document.getElementById('schedule_type').value;
+            if (schedType === 'custom') {
+                const timeVal = document.getElementById('custom_time').value; 
+                if (!timeVal) {
+                    statusDiv.innerText = "⚠️ Please select a time!";
+                    statusDiv.className = "error-text";
+                    return;
+                }
+                const [hour, minute] = timeVal.split(':');
+                cron_string = `${minute} ${hour} * * *`; 
+            } else { cron_string = schedType; }
+        }
+
+        const data = {
+            trigger_source: document.getElementById('trigger_source').value,
+            action_target: document.getElementById('action_target').value,
+            action_payload: payloadInput.value,
+            cron_schedule: cron_string 
+        };
+
+        if (!data.action_payload) {
+            statusDiv.innerText = "⚠️ Payload required";
+            statusDiv.className = "error-text";
+            return;
+        }
+
+        statusDiv.innerText = "Deploying...";
+        statusDiv.className = "";
+
+        try {
+            // SECURED FETCH
+            const response = await fetch(`${API_BASE}/save-rule`, {
+                method: 'POST',
+                headers: secureHeaders,
+                body: JSON.stringify(data)
+            });
+
+            if(response.status === 401) {
+                statusDiv.innerText = "❌ Unauthorized: API Key missing or invalid";
+                statusDiv.className = "error-text";
+                return;
+            }
+
+            if (response.ok) {
+                statusDiv.innerText = "✨ Rule Deployed!";
+                statusDiv.className = "success-text";
+                payloadInput.value = "";
+                document.getElementById('custom_time').value = "";
+                loadRules(); 
+            }
+        } catch (err) {
+            statusDiv.innerText = "❌ Backend Offline";
+            statusDiv.className = "error-text";
+        }
+    }
+
+    window.onload = () => {
+        loadRules();
+        loadLogs(); 
+        toggleScheduleOptions(); 
+        
+        // Auto-refresh the execution logs every 10 seconds!
+        setInterval(loadLogs, 10000); 
+    };
+</script>
+
+</body>
+</html>
