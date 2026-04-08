@@ -22,12 +22,12 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected Successfully"))
     .catch(err => console.error("❌ MongoDB Connection Error:", err));
 
-// 2. DATA SCHEMAS (Added target_id)
+// 2. DATA SCHEMAS
 const ruleSchema = new mongoose.Schema({
     trigger_source: String,
     action_target: String,
     action_payload: String,
-    target_id: String, // <--- New field for dynamic routing
+    target_id: String, 
     cron_schedule: { type: String, default: '* * * * *' },
     created_at: { type: Date, default: Date.now }
 });
@@ -37,6 +37,7 @@ const logSchema = new mongoose.Schema({
     target: String,
     payload: String,
     destination: String,
+    status: String,
     timestamp: { type: Date, default: Date.now }
 });
 const Log = mongoose.model('Log', logSchema);
@@ -45,58 +46,81 @@ const Log = mongoose.model('Log', logSchema);
 const authenticateRequest = (req, res, next) => {
     const providedKey = req.headers['x-api-key'];
     if (!providedKey || providedKey !== process.env.SYSTEM_API_KEY) {
-        console.log(`🚨 SECURITY ALERT: Unauthorized attempt from IP: ${req.ip}`);
         return res.status(401).json({ error: "Unauthorized" });
     }
     next(); 
 };
 
-// --- HELPER FUNCTIONS FOR SENDING ---
+// --- DEEP DEBUG SENDING FUNCTIONS ---
 
 const sendDiscord = async (message, channelId) => {
     const token = process.env.DISCORD_TOKEN;
-    if (!token || !channelId) return console.error("❌ Discord Token or Channel ID missing");
+    if (!token || !channelId) return console.error("❌ Discord Credentials Missing");
 
-    await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bot ${token}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content: `📡 **Zapier Alert:** ${message}` })
-    });
+    try {
+        const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bot ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content: `📡 **Automation Alert:** ${message}` })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            console.log(`✅ Discord: Message sent to channel ${channelId}`);
+            return "Success";
+        } else {
+            console.error(`❌ Discord API Error: ${result.message} (Code: ${result.code})`);
+            return `Error: ${result.message}`;
+        }
+    } catch (err) {
+        console.error("❌ Discord Network Error:", err);
+        return "Network Failure";
+    }
 };
 
 const sendTelegram = async (message, chatId) => {
     const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token || !chatId) return console.error("❌ Telegram Token or Chat ID missing");
+    if (!token || !chatId) return console.error("❌ Telegram Credentials Missing");
 
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: `📱 SignalLink Alert:\n${message}` })
-    });
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: `📱 SignalLink Alert:\n${message}` })
+        });
+
+        const result = await response.json();
+        if (result.ok) {
+            console.log(`✅ Telegram: Message delivered to chat ${chatId}`);
+            return "Success";
+        } else {
+            // This prints the exact reason (e.g., "bot was blocked by the user")
+            console.error(`❌ Telegram API Error: ${result.description}`);
+            return `Error: ${result.description}`;
+        }
+    } catch (err) {
+        console.error("❌ Telegram Network Error:", err);
+        return "Network Failure";
+    }
 };
 
-// 3. THE "EXECUTIONER" ROUTE (Webhook Trigger)
+// 3. THE "EXECUTIONER" ROUTE
 app.post('/api/webhook/catch', authenticateRequest, async (req, res) => {    
-    console.log("\n--- 🔥 LIVE WEBHOOK TRIGGERED ---");
     try {   
         const activeRules = await Rule.find({ trigger_source: "Webhook" }); 
-
         for (const rule of activeRules) {
-            if (rule.action_target === "Discord") {
-                await sendDiscord(rule.action_payload, rule.target_id);
-            }
-            if (rule.action_target === "Telegram") {
-                await sendTelegram(rule.action_payload, rule.target_id);
-            }
-            await new Log({ target: rule.action_target, payload: rule.action_payload, destination: rule.target_id }).save();
+            let status = "Pending";
+            if (rule.action_target === "Discord") status = await sendDiscord(rule.action_payload, rule.target_id);
+            if (rule.action_target === "Telegram") status = await sendTelegram(rule.action_payload, rule.target_id);
+            await new Log({ target: rule.action_target, payload: rule.action_payload, destination: rule.target_id, status }).save();
         }
-        res.status(200).json({ status: "Executed", count: activeRules.length });
+        res.status(200).json({ status: "Processed" });
     } catch (error) {
-        res.status(500).json({ error: "Trigger failed" });
+        res.status(500).json({ error: "Webhook failed" });
     }
 });
 
@@ -124,7 +148,7 @@ app.get('/get-logs', authenticateRequest, async (req, res) => {
     res.json(logs);
 });
 
-// 5. AUTOMATION TICKER (Dynamic Scheduler)
+// 5. AUTOMATION TICKER
 cron.schedule('* * * * *', async () => {
     const now = new Date();
     const currentMin = now.getMinutes();
@@ -132,7 +156,6 @@ cron.schedule('* * * * *', async () => {
 
     try {
         const scheduledRules = await Rule.find({ trigger_source: "Schedule" });
-
         for (const rule of scheduledRules) {
             const parts = (rule.cron_schedule || "* * * * *").split(' ');
             const ruleMin = parts[0], ruleHr = parts[1];
@@ -143,10 +166,10 @@ cron.schedule('* * * * *', async () => {
             else if (ruleMin == currentMin && ruleHr == currentHr) shouldRun = true; 
 
             if (shouldRun) {
-                console.log(`⏳ Running Schedule: ${rule.action_payload}`);
-                if (rule.action_target === "Discord") await sendDiscord(rule.action_payload, rule.target_id);
-                if (rule.action_target === "Telegram") await sendTelegram(rule.action_payload, rule.target_id);
-                await new Log({ target: rule.action_target, payload: rule.action_payload, destination: rule.target_id }).save();
+                let status = "Running";
+                if (rule.action_target === "Discord") status = await sendDiscord(rule.action_payload, rule.target_id);
+                if (rule.action_target === "Telegram") status = await sendTelegram(rule.action_payload, rule.target_id);
+                await new Log({ target: rule.action_target, payload: rule.action_payload, destination: rule.target_id, status }).save();
             }
         }
     } catch (err) { console.error("❌ Ticker Error:", err); }
