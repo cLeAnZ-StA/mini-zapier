@@ -134,6 +134,7 @@
 
         .rule-info { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
         .rule-payload { margin-top: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; font-size: 0.85rem; color: #64748b; border-left: 3px solid #cbd5e1; }
+        .rule-destination { font-size: 0.75rem; color: #a0aec0; margin-top: 4px; font-family: monospace; }
         
         #rulesList::-webkit-scrollbar { width: 6px; }
         #rulesList::-webkit-scrollbar-thumb { background: #f0eee2; border-radius: 10px; }
@@ -158,10 +159,15 @@
 <div class="dashboard">
     <header>
         <h2>Mini-Zapier</h2>
-        <p class="subtitle">Electronics & Telecomm Automation Engine</p>
+        <p class="subtitle">Electronics & Telecomms Automation Engine</p>
     </header>
     
     <span class="section-title">Configuration</span>
+
+    <div class="form-group" id="target_id_group">
+        <label>Target Channel/Chat ID</label>
+        <input type="text" id="target_id" placeholder="Paste Discord Channel ID or Telegram Chat ID">
+    </div>
     
     <div class="form-group">
         <label>Trigger Source</label>
@@ -220,11 +226,9 @@
 </div>
 
 <script>
-    // --- SECURITY CONFIGURATION ---
     const API_BASE = '';
-    const SYSTEM_API_KEY = 'extc-zapier-secret'; // This MUST match your .env file!
+    const SYSTEM_API_KEY = 'extc-zapier-secret'; 
 
-    // Helper function to attach the VIP Pass to every request
     const secureHeaders = {
         'Content-Type': 'application/json',
         'x-api-key': SYSTEM_API_KEY
@@ -253,11 +257,8 @@
     async function loadRules() {
         const listDiv = document.getElementById('rulesList');
         try {
-            // SECURED FETCH
             const response = await fetch(`${API_BASE}/get-rules`, { headers: secureHeaders });
-            
             if(response.status === 401) throw new Error("Unauthorized");
-            
             const rules = await response.json();
             
             if (rules.length === 0) {
@@ -278,6 +279,7 @@
                     ${getBadge(r.action_target)}
                     <div class="rule-info">${triggerText}</div>
                     <div class="rule-payload">"${r.action_payload}"</div>
+                    <div class="rule-destination">ID: ${r.target_id || 'Global Default'}</div>
                 </div>
                 `;
             }).join('');
@@ -289,7 +291,6 @@
     async function loadLogs() {
         const logDiv = document.getElementById('logsList');
         try {
-            // SECURED FETCH
             const response = await fetch(`${API_BASE}/get-logs`, { headers: secureHeaders });
             const logs = await response.json();
             
@@ -300,13 +301,14 @@
 
             logDiv.innerHTML = logs.map(log => {
                 const timeString = new Date(log.timestamp).toLocaleTimeString();
-                const icon = log.target === "Discord" ? '<i class="fab fa-discord" style="color:#5865F2;"></i>' : '<i class="fa-brands fa-telegram" style="color:#0088cc;"></i>';
+                const icon = log.target === "Discord" ? '<i class="fab fa-discord" style="color:#5865F2;"></i>' :
+                '<i class="fa-brands fa-telegram" style="color:#0088cc;"></i>';
                 
                 return `
                 <div style="border-bottom: 1px solid #e2e8f0; padding: 8px 0; font-size: 0.85rem; display: flex; align-items: center; gap: 10px;">
                     <span style="color: #64748b; font-weight: 600;">[${timeString}]</span>
                     ${icon}
-                    <span style="color: #1a202c;">Sent: "${log.payload}"</span>
+                    <span style="color: #1a202c;">Sent: "${log.payload}" to ${log.destination || '??'}</span>
                 </div>
                 `;
             }).join('');
@@ -318,7 +320,6 @@
     async function deleteRule(id) {
         if (!confirm("Are you sure you want to delete this automation?")) return;
         try {
-            // SECURED FETCH
             const response = await fetch(`${API_BASE}/delete-rule/${id}`, { 
                 method: 'DELETE',
                 headers: secureHeaders 
@@ -330,6 +331,7 @@
     async function saveRule() {
         const statusDiv = document.getElementById('status');
         const payloadInput = document.getElementById('action_payload');
+        const targetIdInput = document.getElementById('target_id');
         
         let cron_string = "* * * * *"; 
         if (document.getElementById('trigger_source').value === 'Schedule') {
@@ -350,11 +352,12 @@
             trigger_source: document.getElementById('trigger_source').value,
             action_target: document.getElementById('action_target').value,
             action_payload: payloadInput.value,
+            target_id: targetIdInput.value, // Captured here
             cron_schedule: cron_string 
         };
 
-        if (!data.action_payload) {
-            statusDiv.innerText = "⚠️ Payload required";
+        if (!data.action_payload || !data.target_id) {
+            statusDiv.innerText = "⚠️ Payload and Target ID required";
             statusDiv.className = "error-text";
             return;
         }
@@ -363,7 +366,6 @@
         statusDiv.className = "";
 
         try {
-            // SECURED FETCH
             const response = await fetch(`${API_BASE}/save-rule`, {
                 method: 'POST',
                 headers: secureHeaders,
@@ -380,6 +382,7 @@
                 statusDiv.innerText = "✨ Rule Deployed!";
                 statusDiv.className = "success-text";
                 payloadInput.value = "";
+                targetIdInput.value = ""; // Reset target ID field
                 document.getElementById('custom_time').value = "";
                 loadRules(); 
             }
@@ -393,8 +396,6 @@
         loadRules();
         loadLogs(); 
         toggleScheduleOptions(); 
-        
-        // Auto-refresh the execution logs every 10 seconds!
         setInterval(loadLogs, 10000); 
     };
 </script>
