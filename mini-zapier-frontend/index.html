@@ -113,6 +113,28 @@
         
         #schedule_options { animation: slideDown 0.3s ease-out forwards; border-left: 3px solid var(--primary); padding-left: 15px; margin-left: 5px; }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Connect Bot Buttons */
+        .connect-container { display: flex; gap: 12px; margin-bottom: 25px; }
+        .connect-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: white;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        .discord-connect { background: #5865F2; }
+        .discord-connect:hover { background: #4752C4; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3); }
+        .telegram-connect { background: #0088cc; }
+        .telegram-connect:hover { background: #0077b5; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3); }
     </style>
 </head>
 <body>
@@ -152,8 +174,21 @@
         <h2>Mini-Zapier</h2>
         <p class="subtitle">Electronics & Telecomms Automation Engine</p>
     </header>
+
+    <span class="section-title">Step 1: Connect Bots</span>
+    <p style="font-size: 0.85rem; color: #718096; margin-bottom: 12px; margin-top: 0;">Click below to invite the bots to your server/chat before creating rules.</p>
     
-    <span class="section-title">Configuration</span>
+    <div class="connect-container">
+        <a href="https://discord.com/oauth2/authorize?client_id=1491283108853579796&permissions=19456&integration_type=0&scope=bot" target="_blank" class="connect-btn discord-connect">
+            <i class="fab fa-discord"></i> Add to Discord
+        </a>
+        
+        <a href="https://t.me/helpful_assist_bot" target="_blank" class="connect-btn telegram-connect">
+            <i class="fab fa-telegram"></i> Open Telegram
+        </a>
+    </div>
+
+    <span class="section-title" style="margin-top: 20px;">Step 2: Configuration</span>
 
     <div class="form-group" id="target_id_group">
         <label>Target Channel/Chat ID</label>
@@ -206,6 +241,7 @@
 </div>
 
 <script>
+    // Ensure this stays blank so it dynamically talks to your Render backend
     const API_BASE = ''; 
 
     function getAuthHeaders() {
