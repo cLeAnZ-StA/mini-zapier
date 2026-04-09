@@ -30,7 +30,7 @@ http.begin(client, "[https://mini-zapier-o98o.onrender.com](https://mini-zapier-
 
 http.addHeader("Content-Type", "application/json");
 
-// replace these placeholders if using
+//placeholders
 http.addHeader("x-api-key", "your_secret_key"); 
 
 int responseCode = http.POST("{\"device\":\"esp32\", \"status\":\"motion_detected\"}");
